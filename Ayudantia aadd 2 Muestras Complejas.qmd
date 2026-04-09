@@ -1,0 +1,407 @@
+---
+title: "Ayudantía Muestras Complejas"
+subtitle: "Ayudantía N3"
+author: " Francisca Hernández <br><a style='color:#D2232A' href='mailto:correo@example.com'>francisca.hernandez_c@mail.udp.cl</a><br>"
+date: last-modified
+date-format: 'dddd DD [de] MMMM, YYYY'
+last-modified:
+title-block-banner: true
+format: 
+  html:
+    css: "files/style.css"
+    embed-resources: true
+    smooth-scroll: true
+    fontcolor: black
+    toc: true
+    toc-location: left
+    toc-title: "Contenidos"
+    toc-depth: 3
+lang: es
+---
+
+::: logo-position
+<!-- No modificar -->
+
+![](files/logo-udp.png){width="200px"}<br> <strong> Análisis Avanzado de Datos II </strong><br> Facultad de Ciencias Sociales e Historia
+:::
+
+## ¿ Qué son las muestras complejas ?
+
+Una muestra compleja es cuando **no eliges a las personas completamente al azar**, sino que usas un proceso en etapas o por grupos (por ejemplo, primero comunas, luego hogares y después personas). Esto se hace para que la **muestra represente mejor la realidad**, especialmente en estudios grandes, aunque implica que no todos tienen la misma probabilidad de ser seleccionados.
+
+### ¿Por qué se utilizan?
+
+------------------------------------------------------------------------
+
+Se hacen porque **permiten estudiar poblaciones grandes de forma más realista, ordenada y eficiente**. En la práctica, es muy difícil y caro seleccionar personas totalmente al azar en una investigación (MAS), por eso se agrupa la población (por comunas, hogares, etc.) y se selecciona por etapas. **Así se logra una muestra más representativa de la diversidad social, reduciendo costos y facilitando el trabajo de terreno**.
+
+### ¿Qué debemos saber del muestreo aleatorio complejo?
+
+------------------------------------------------------------------------
+
+Consta de estrategias:
+
+-   **Estratificación**
+
+::: {.callout-note collapse="true"}
+#### ¿Que es la estratificación?
+
+Dividir la población total en subgrupos homogéneos (estratos) antes de realizar el muestreo. Esta nos asegura representatividad, mejora la precisión y permite análisis por estratos.
+:::
+
+-   **Muestreo por Conglomerados**
+
+::: {.callout-note collapse="true"}
+#### ¿ Qué es el muestreo por conglomerados?
+
+El muestreo por conglomerados consiste en dividir la población en grupos (generalmente geográficos), seleccionar algunos al azar y luego encuestar a todos o a una parte de los individuos dentro de esos grupos.
+
+Nos ayuda a reducir costos y logística
+:::
+
+![](files/muestreo.png)
+
+### ¿Pero qué pasa cuando combinamos estratificación y conglomerados ?
+
+------------------------------------------------------------------------
+
+**No todos los individuos o viviendas en la población tienen la misma probabilidad final de ser incluidos en la muestra**
+
+Esto pasa porque la selección se hace en varias etapas y con criterios distintos, no como en un azar simple.
+
+### ¿Cómo lo solucionamos?
+
+------------------------------------------------------------------------
+
+# **Ponderadores**
+
+Los también llamados **Factores de expansión** son un peso que asignamos a cada unidad de la muestra que representa a cuántas unidades esa unidad representa
+
+![](files/ponderadores.png)
+
+::: {.callout-important collapse="true"}
+### **Ignorar los ponderadores lleva a:**
+
+-   Estimaciones Sesgadas
+
+-   Conclusiones Erroneas
+:::
+
+## Ahora qué debemos hacer con esto?
+
+Al tener muestras complejas debemos calcular nuestros análisis estadisticos con los ponderadores, por lo tanto el codigo que comunmente utilizamos en R (Rbase ) no nos serviran para esto, por lo que tendremos que usar:
+
+# [Survey](https://www.rdocumentation.org/packages/survey/versions/4.5) y [Srvyr](https://cran.r-project.org/web/packages/srvyr/vignettes/srvyr-vs-survey.html)
+
+------------------------------------------------------------------------
+
+# [<strong> Practiquemos su uso ! :3 </strong>]{style="color:#FF1493;"}
+
+Para hacer esto utilizaremos la Encuesta de Bienestar Social en su versión más reciente que tiene como objetivo medir la calidad de vida de las personas en Chile desde una perspectiva más subjetiva, incorporando dimensiones como la satisfacción con la vida, la felicidad, la salud mental y las relaciones sociales.
+
+**Click para descargar la base [aqui](https://observatorio.ministeriodesarrollosocial.gob.cl/storage/docs/bienestar-social/2023/Base_de_datos_EBS_2023.RData.rar)**
+
+**Click para descargar el libro de codigos [aqui](https://observatorio.ministeriodesarrollosocial.gob.cl/storage/docs/bienestar-social/2023/Libro_de_codigos_EBS_2023.xlsx)**
+
+![](files/ebs.png)
+
+------------------------------------------------------------------------
+
+[<strong>Como trabajaremos con una base de datos construida con muestreo complejo lo primero que haremos será explorar su libro de datos </strong>]{style="color:#8B475D;"}
+
+Lo más fundamental es encontrar su Factores de expansión, estratos y conglomerados
+
+**En este caso son:**
+
+| fexp            | Factor expansión nacional     |
+|-----------------|-------------------------------|
+| **estrato_ebs** | **Estratos de varianza**      |
+| **varunit**     | **Conglomerados de varianza** |
+
+Ya habiendo encontrado los nombres proseguimos:
+
+## 1. Cargar Paquetes
+
+Lo primero que debemos hacer es preparar nuestro entorno
+
+```{r}
+#| message: false
+#| warning: false
+
+
+library(tidyverse)
+library(haven)
+library(survey)
+library(srvyr)
+
+```
+
+## 2. Cargar la base
+
+Al tener la base en formato Rdata debemos usar `load()` que es una función de Rbase y asignamos a un objeto con un nombre simplificado
+
+```{r}
+#| message: false
+#| warning: false
+
+
+load("Base de datos EBS 2023.RData")
+
+ebs <- EBS_2023_vp
+
+```
+
+## 3. Explorar la Base
+
+Teniendo la base ya cargada podemos ver como esta construida o resumenes de sus variables claves a utilizar
+
+**En este caso veremos como se comporta los niveles de satisfacción de vida según orientación sexual**
+
+Para ello ocuparemos las siguientes variables:
+
+| tramoebs2 | Tramo de edad |
+|:--------------------------------:|:------------------------------------:|
+| **os1_recat** | **Orientación Sexual** |
+| **a1** | **Qué tan satisfecho(a) o insatisfecho(a) se encuentra con su vida** |
+| **sg01** | **Sexo** |
+
+```{r}
+#| warning: false
+
+head(ebs)
+
+summary(as_factor(ebs$tramoebs2))
+
+summary(as_factor(ebs$os1_recat))
+
+summary(as_factor(ebs$a1))
+
+summary(as_factor(ebs$sg01))
+```
+
+**Veamos ahora las variables que identificamos del muestreo complejo :**
+
+```{r}
+summary(ebs$fexp)
+
+summary(ebs$estrato_ebs)
+
+summary(ebs$varunit)
+```
+
+Con estas tres variables, R dispondrá de toda la información necesaria para entender la estructura del diseño muestral
+
+::: {.callout-important collapse="true"}
+# **IMPORTANTÍSIMO!!!!!!!!!!!!!!!!!!!!!**
+
+**TODAS LAS RECONFIGURACIONES QUE SE REALICÉN DEBEN SER REALIZADAS ANTES DE DECLARAR EL DISEÑO**
+
+```{r}
+#Borramos Perdidos en Orientación sexual y pasamos a factor 
+ebs <- ebs%>%
+  mutate(os1_recat = ifelse(os1_recat %in% c(-99, -88), NA, os1_recat))
+
+ebs <- ebs%>%
+  mutate(a1 = ifelse(a1 %in% c(-99, -88), NA, a1))
+
+ebs <- ebs %>%
+  mutate(os1_recat = factor(os1_recat,
+    levels = c(1, 2, 3),
+    labels = c("Gay/Lesbiana", "Bisexual", "Heterosexual")
+  ))
+
+```
+:::
+
+## 4. Creando el diseño muestral
+
+**CON SURVEY**
+
+```{r}
+
+ebs_survey<- svydesign(ids = ~varunit,      
+                          strata = ~estrato_ebs,   
+                          weights = ~fexp,      
+                          data = ebs)
+
+```
+
+**CON SRVYR**
+
+```{r}
+ebs_srvyr <- as_survey_design(ebs,
+                              ids = varunit,
+                              strata = estrato_ebs,
+                              weights = fexp )   
+```
+
+------------------------------------------------------------------------
+
+## 5.Calculos con diseño
+
+**CON SURVEY**
+
+```{r}
+edad_ponderado <- svymean(~tramoebs2, design = ebs_survey, na.rm = TRUE)
+satis_ponderado <- svymean(~a1, design = ebs_survey, na.rm = TRUE)
+ori_ponderado <- svymean(~os1_recat, design = ebs_survey, na.rm = TRUE)
+
+satis_ponderado
+
+edad_ponderado
+
+ori_ponderado
+```
+
+**CON SRVYR**
+
+```{r}
+medias_pond<- ebs_srvyr %>%
+  summarise( satis_media = survey_mean(a1, na.rm = TRUE, vartype = "ci"),
+    edad_media  = survey_mean(tramoebs2,  na.rm = TRUE, vartype = "ci")
+  )
+
+medias_pond
+```
+
+::: {.callout-important collapse="true"}
+### Cómo quedaría sin DMC
+
+En gran parte de los cálculos nos darían diferencias, ya que estaríamos tratando a la muestra como una de MAS
+
+**EJEMPLO**
+
+```{r}
+mean(ebs$tramoebs2)
+
+mean(ebs$a1)
+
+```
+
+Mientras que con Muestreo complejo la media de tramos de edad nos da **2.55** sin muestreo complejo la misma media nos da **2.74**
+
+Y lo mismo sucede con la satisfacción, con muestreo complejo nos da **3.72** y sin muestreo complejo nos da **3.77**
+
+**Por lo tanto para lograr estimaciones correctas es fundamnetal utilizar Diseño muestral complejo en aquellas bases de datos que lo requieran**
+:::
+
+## 6. Análisis final
+
+Para finalizar utilizaremos las variables escogidas para ver la satisfacción con la vida según orientación sexual
+
+**CON SURVEY**
+
+```{r}
+svyby(
+  ~a1, 
+  ~os1_recat, 
+  design = ebs_survey, 
+  FUN = svymean, 
+  na.rm = TRUE
+)
+```
+
+**CON SRVYR**
+
+```{r}
+ebs_srvyr %>%
+  group_by(os1_recat) %>%
+  summarise(
+    satis_media = survey_mean(a1, na.rm = TRUE),
+    .groups = "drop")
+
+```
+### Análisis de significancia 
+
+Para evaluar si las diferencias observadas en la satisfacción con la vida según orientación sexual son estadísticamente significativas, podemos estimar un modelo de regresión considerando el diseño muestral complejo.
+
+```{r}
+modelo <- svyglm(
+  as.numeric(a1) ~ os1_recat,
+  design = ebs_survey)
+summary(modelo)
+```
+# [<strong> OTROS </strong>]{style="color:#FF82AB;"}
+
+Otras funciones que les pueden servir para proximos trabajos con diseño muestral complejo
+
+## SRVYR
+
+| Código | ¿Para qué sirve? | Ejemplo |
+|----|----|----|
+| `as_survey_design()` | Crear el diseño muestral | `as_survey_design(data, ids, strata, weights)` |
+| `group_by()` | Agrupar datos | `group_by(sexo)` |
+| `summarise()` | Calcular estadísticas | `summarise(media = survey_mean(x))` |
+| `survey_mean()` | Media ponderada | `survey_mean(ingreso)` |
+| `survey_total()` | Total poblacional estimado | `survey_total(ingreso)` |
+| `survey_prop()` | Proporciones ponderadas | `survey_prop()` |
+| `survey_ratio()` | Razones entre variables | `survey_ratio(x, y)` |
+| `survey_quantile()` | Percentiles ponderados | `survey_quantile(x, 0.5)` |
+| `survey_var()` | Varianza | `survey_var(x)` |
+| `survey_sd()` | Desviación estándar | `survey_sd(x)` |
+| `survey_median()` | Mediana | `survey_median(x)` |
+
+#### Funciones mas avanzadas 
+
+Para regresiones con muestreo complejo, **`srvyr` no tiene una función propia**, sino que usa las de `survey` (principalmente `svyglm()`). Pero puedes trabajar desde el objeto `srvyr` sin problema.
+
+## SURVEY 
+
+| Código | ¿Para qué sirve? | Ejemplo |
+|----|----|----|
+| `svydesign()` | Crear el diseño muestral | `svydesign(ids=~varunit, strata=~estrato, weights=~fexp, data=data)` |
+| `svymean()` | Media ponderada | `svymean(~ingreso, design)` |
+| `svytotal()` | Total poblacional | `svytotal(~ingreso, design)` |
+| `svyby()` | Calcular por grupos | `svyby(~x, ~grupo, design, svymean)` |
+| `svyprop()` | Proporciones (con tabla) | `svymean(~factor(x), design)` |
+| `svyquantile()` | Percentiles | `svyquantile(~x, design, 0.5)` |
+| `svyvar()` | Varianza | `svyvar(~x, design)` |
+| `svytable()` | Tablas de frecuencia ponderadas | `svytable(~sexo, design)` |
+
+#### **Funciones más Avanzadas**
+
+| Código       | ¿Para qué sirve?                      |
+|--------------|---------------------------------------|
+| `svyglm()`   | Regresión (lineal o logística)        |
+| `svychisq()` | Test chi-cuadrado con diseño complejo |
+| `svyttest()` | Test de medias (t-test)               |
+
+
+#Actividad 
+
+El objetivo de esta actividad es aplicar el uso de ponderadores y el diseño muestral complejo.
+
+## Actividad (10 minutos)
+
+El objetivo de esta actividad es aplicar el uso de ponderadores y el diseño muestral complejo.
+
+### Instrucciones
+
+Utilizando la base de datos EBS y el objeto `ebs_srvyr`, responde lo siguiente:
+
+1. Calcular la **media de satisfacción con la vida (`a1`) según sexo (`sg01`)** utilizando `srvyr`.
+
+2. Calcular la **proporción de personas satisfechas** (categorías 4 y 5 de `a1`) según tramo de edad (`tramoebs2`).
+
+3. Responder brevemente:
+   - ¿Qué grupo presenta mayor nivel de satisfacción?
+   - ¿Por qué es importante usar ponderadores en este análisis?
+
+**Ayuda (si te quedas pegado)**
+
+- Usa `group_by()` y `summarise()`
+- Usa `survey_mean()` o `survey_prop()`
+- Recuerda usar `na.rm = TRUE`
+
+**Opcional (si te sobra tiempo)**
+
+Realiza el mismo cálculo de la media **sin diseño muestral** (`mean()`) y compara los resultados.
+
+**¿Observas diferencias?**
+---
+
+## [<strong> Autoría y fuentes </strong>]{style="color:#FF82AB;"}
+
+Este material fue elaborado por <strong>Francisca Hernández</strong> 
+(<a href="mailto:francisca.hernandez_c@mail.udp.cl">francisca.hernandez_c@mail.udp.cl</a>),
+utilizando desarrollo propio en base a los contenidos del curso. Asimismo, se incorporaron elementos provenientes de las clases del profesor <strong>Gabriel Sotomayor</strong> y recursos complementarios disponibles en internet.
